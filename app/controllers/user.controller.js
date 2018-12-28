@@ -1,32 +1,49 @@
 const User = require('../models/user.model.js');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
-exports.create = (req, res) => {
-    if (!req.body.name) {
-        return res.status(400).send({
-            message: 'User name cannot be empty'
-        })
+exports.register = function(req, res) {
+  var newUser = new User(req.body);
+  newUser.hash_password = bcrypt.hashSync(req.body.password, 10);
+  newUser.save(function(err, user) {
+    if (err) {
+      return res.status(400).send({
+        message: err
+      });
+    } else {
+      user.hash_password = undefined;
+      return res.json(user);
     }
-
-    if (!req.body.email) {
-        return res.status(400).send({
-            message: 'User email cannot be empty'
-        })
-    }
-
-    const user = new User({
-        name: req.body.name || "Untitled User",
-        email: req.body.email
-    });
-
-    user.save()
-        .then(data => {
-            res.send(data);
-        }).catch(err => {
-            res.status(500).send({
-                message: err.message || 'Some error occurred while creating the user.'
-            })
-        })
+  });
 };
+
+// exports.create = (req, res) => {
+//     if (!req.body.name) {
+//         return res.status(400).send({
+//             message: 'User name cannot be empty'
+//         })
+//     }
+
+//     if (!req.body.email) {
+//         return res.status(400).send({
+//             message: 'User email cannot be empty'
+//         })
+//     }
+
+//     const user = new User({
+//         name: req.body.name || "Untitled User",
+//         email: req.body.email
+//     });
+
+//     user.save()
+//         .then(data => {
+//             res.send(data);
+//         }).catch(err => {
+//             res.status(500).send({
+//                 message: err.message || 'Some error occurred while creating the user.'
+//             })
+//         })
+// };
 
 exports.findAll = (req, res) => {
     User.find()
@@ -119,3 +136,28 @@ exports.delete = (req, res) => {
             });
         });
 };
+
+exports.signIn = function(req, res) {
+    User.findOne({
+        email: req.body.email
+    }, function (err, user) {
+        if (err) throw err;
+        if (!user) {
+            res.status(401).json({ message: 'Authentication failed. User not found.' });
+        } else if (user) {
+            if (!user.comparePassword(req.body.password)) {
+                res.status(401).json({ message: 'Authentication failed. Wrong password.' });
+            } else {
+                return res.json({ token: jwt.sign({ email: user.email, fullName: user.fullName, _id: user._id }, 'RESTFULAPIs') });
+            }
+        }
+    });
+}
+
+exports.loginRequired = function(req, res, next) {
+    if (req.user) {
+        next();
+    } else {
+        return res.status(401).json({ message: 'Unauthorized user!' });
+    }
+}

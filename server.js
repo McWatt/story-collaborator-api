@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const dbConfig = require('./config/database.config.js');
 const mongoose = require('mongoose');
 const fs = require('fs');
+// const User = require('./api/models/userModel');
+const jsonwebtoken = require("jsonwebtoken");
 
 // create express app
 const app = express();
@@ -16,13 +18,45 @@ app.use(bodyParser.json());
 mongoose.Promise = global.Promise;
 
 // Connecting to the database
-mongoose.connect(dbConfig.url)
-.then(() => {
-    console.log('Successfully connected to the database');
-}).catch(err => {
-    console.log('Could not connect to the database. Exiting now...');
+mongoose
+  .connect(
+    dbConfig.url,
+    { useNewUrlParser: true }
+  )
+  .then(() => {
+    console.log("Successfully connected to the database");
+  })
+  .catch(err => {
+    console.log("Could not connect to the database. Exiting now...");
     process.exit();
-})
+  });
+
+app.all("/api/*", function (req, res, next) {
+    if (req.method.toLowerCase() !== "options") {
+        // Temporarily bypassing cors restrictions
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Cache-Control, Pragma, Origin, Authorization, Content-Type, X-Requested-With");
+        res.header("Access-Control-Allow-Methods", "GET, PUT, POST");
+        return next();
+    }
+    return res.send(204);
+});
+
+// Authentication middleware
+app.use(function(req, res, next) {
+    if (req.headers && req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+        jsonwebtoken.verify(req.headers.authorization.split(' ')[1], 'RESTFULAPIs', function(err, decode) {
+            if (err) {
+                req.user = undefined;
+            }
+            req.user = decode;
+            next();
+        });
+    } else {
+        req.user = undefined;
+        next();
+    }
+});
 
 // define a simple route
 app.get('/', (req, res) => {
