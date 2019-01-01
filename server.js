@@ -2,12 +2,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const dbConfig = require('./config/database.config.js');
 const mongoose = require('mongoose');
-const fs = require('fs');
-// const User = require('./api/models/userModel');
+// const fs = require('fs');
+const cors = require('cors');
 const jsonwebtoken = require("jsonwebtoken");
 
 // create express app
 const app = express();
+
+app.use(cors());
 
 // parse requests of content-type - application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -33,10 +35,6 @@ mongoose
 
 app.all("/api/*", function (req, res, next) {
     if (req.method.toLowerCase() !== "options") {
-        // Temporarily bypassing cors restrictions
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers", "Cache-Control, Pragma, Origin, Authorization, Content-Type, X-Requested-With");
-        res.header("Access-Control-Allow-Methods", "GET, PUT, POST");
         return next();
     }
     return res.send(204);
